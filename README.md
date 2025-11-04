@@ -1,67 +1,90 @@
-# 🍣 ECS7032P: Sushi Go! AI Agent (GroupAI)
+# 🍣 Sushi Go! MCTS Agent
 
-## 🎯 Project Overview
+## Overview
 
-This project implements an enhanced **Monte Carlo Tree Search (MCTS)** agent, named `MySushiGoAgent`, designed to play the card-drafting game **Sushi Go!** within the Java TAG framework.
+This project implements a **Monte Carlo Tree Search (MCTS)** agent for the Tabletop Games (TAG) framework version of **Sushi Go!**.
 
-[cite_start]The agent aims to achieve robust performance in this **Imperfect Information (II)** and **Multi-Player** environment by integrating advanced search heuristics and statistical techniques[cite: 2128].
+The agent utilizes **UCT (Upper Confidence Bound 1 applied to Trees)** with several optimizations for fast and reliable performance under a fixed time budget:
+* **RAVE Blending:** Combines the standard MCTS value estimate with the Rapid Action Value Estimation (RAVE) for faster convergence in the early stages of the search.
+* **Heuristic-Seeded Priors:** Uses domain knowledge to bias initial action selection.
+* **ε-Greedy Rollouts:** Employs an epsilon-greedy policy during playouts for effective exploration.
 
----
-
-## 💡 Agent Design Highlights (Complexity Level 4)
-
-The core agent architecture is a highly modified form of `BasicMCTS`. It integrates three major enhancements to overcome the challenges of hidden information and a strict 1-second decision limit.
-
-### 1. Imperfect Information Handling: Root Determinization
-
-[cite_start]To counter the problem of **Partial Observability** (hidden hands and unknown deck order), the agent uses the **Root Determinization** strategy[cite: 2128]:
-* [cite_start]In every MCTS iteration, the agent creates a **single, fully specified world state** (a *determinization*) that is consistent with the player's observable information (their hand, played cards, scores)[cite: 1711].
-* The search then runs solely on this hypothetical state. [cite_start]This method ensures that the accumulated statistics are robust, as they are averaged across thousands of possible hidden scenarios, implicitly handling the core issue of **Strategy Fusion**[cite: 1713].
-
-### 2. Fast Learning: RAVE/AMAF Integration
-
-The agent integrates the **Rapid Action Value Estimate (RAVE)** heuristic to accelerate learning under the strict time budget.
-* **AMAF (All Moves As First):** During the **Backpropagation** phase, rewards from the playout are applied not only to the moves directly in the tree path ($Q(s,a)$) but also to **every occurrence of those actions** seen later in the random rollout ($A_a$).
-* **Value Blending:** The **Selection** phase uses a dynamically decaying weight ($\alpha$) to blend the two estimates: the fast-converging AMAF value and the slowly converging MCTS value. This provides high reliability early in the search.
-
-$$Q^{\alpha\text{-AMAF}}(s,a) = \alpha \cdot A_a + (1 - \alpha) \cdot Q(s,a)$$
-
-### 3. Search Guidance: Heuristic-Biased Rollouts
-
-[cite_start]To improve efficiency and quality of the search (a form of **soft pruning** [cite: 1122, 3403][cite_start]), the agent uses a domain-specific strategy during the **Playout (Simulation)** phase[cite: 2121].
-* The default uniform random policy is replaced by a policy biased using a sophisticated **Sushi Go! Heuristic** (`SushiGoHeuristic.java`).
-* [cite_start]This heuristic prioritizes strategic moves like **set completion pressure** (Sashimi, Tempura) and **non-linear scoring** (Dumplings), ensuring the thousands of simulated games yield realistic, high-quality feedback to the learning engine[cite: 2121].
+A small harness is included to run reproducible **3-player tournaments** against baseline players.
 
 ---
 
-## 🚀 Execution Instructions
+## 💻 Requirements
 
-This agent requires the Java TAG framework to run and must be executed using the `RunGames` main class.
+* **Java 17+** (OpenJDK recommended)
+* **IntelliJ IDEA** or **VS Code** with Java support
+* **Gradle** or **Maven** build tool
+* **TAG framework** checked out with the **Sushi Go!** game module enabled.
 
-### 1. File Structure
+---
 
-All custom files must be placed within a specific package:
+## 📁 Repo Layout
 
-| File | Location |
+| Path | Description |
 | :--- | :--- |
-| `MySushiGoAgent.java` | `src/main/java/GroupAI/` |
-| `RAVENode.java` | `src/main/java/GroupAI/` |
-| `SushiGoHeuristic.java` | `src/main/java/GroupAI/` |
-| `PlayerParameters.java` | `src/main/java/GroupAI/` |
-
-### 2. How to Run the Agent
-
-Use IntelliJ IDEA's Run Configuration with the following settings.
-
-| Configuration Field | Value | Notes |
-| :--- | :--- | :--- |
-| **Main class** | `evaluation.RunGames` | The controller for batch testing/competitions. |
-| **Program arguments** | `-g SushiGo -p GroupAI.MySushiGoAgent -p players.mcts.BasicMCTS -p players.rhea.RHEAPlayer -i 500 -t 1000` | [cite_start]This command runs **500 games** of **3-player Sushi Go!** with a **1-second** time limit per decision (required for competition testing)[cite: 2062, 2151, 2153]. |
+| `src/main/java/GroupAI_parth/...` | Your group package for agent code and helpers. |
+| `src/main/java/GroupAI_parth/tournamentPlayers` | Directory scanned by the runner to load all tournament participants. |
+| `src/main/java/GroupAI_parth/TestSushiGoAgent.java` | Main entry point to run matches/tournaments (adjust if your runner is different). |
+| `configs/` | JSON configuration files for reproducible runs (create this folder if it doesn’t exist). |
+| `README.md` | This file. |
 
 ---
 
-## ⚙️ Dependencies
+## 🚀 Quick Start
 
-This project relies on the core classes found in the TAG framework, primarily within the `core.*`, `games.sushigo.*`, and `utilities.*` packages.
+1.  **Clone and Open:** Clone the project and open it in your chosen IDE.
+2.  **Verify Package:** Ensure your base package name is `GroupAI_parth` and the player scan directory is set to `src/main/java/GroupAI_parth/tournamentPlayers`.
+3.  **Build:** Build the project (e.g., in Gradle, select "Reload Gradle Project" and then Build).
+4.  **Create Config:** Create the `configs/` folder and save the following content as **`configs/tournament.json`**:
 
-*(Insert JSON Configuration File for Competition here if required by submission rules)*# GroupAIProject
+    ```json
+    {
+      "game": "SushiGo",
+      "nPlayers": 3,
+      "playerDirectory": "src/main/java/GroupAI_parth/tournamentPlayers",
+      "matchups": 100,
+      "mode": "RANDOM",
+      "verbose": true,
+      "seed": 740234
+    }
+    ```
+
+5.  **Run:** Execute the tournament runner (e.g., run the `main` method in `TestSushiGoAgent.java`). Check the console output for results and statistics.
+
+---
+
+## ➕ Adding Players
+
+To add a player to the tournament:
+
+1.  Create a class that **extends `AbstractPlayer`**.
+2.  Ensure the class has a **no-argument constructor** or that your runner correctly constructs it.
+3.  Place the compiled class file into the following directory:
+    `src/main/java/GroupAI_parth/tournamentPlayers`
+
+**Examples:**
+* `MySushiGoAgent.java` (Your primary agent)
+* `MCTSPlayer.java` (A baseline MCTS implementation)
+* `RandomPlayer.java` (A simple random baseline)
+
+---
+
+## ⚙️ Agent Parameters
+
+If your runner uses a parameterized constructor for the agent, the typical parameters are:
+
+| Parameter | Type | Example Value | Description |
+| :--- | :--- | :--- | :--- |
+| **`timeBudgetMs`** | `int` | `300` | Max milliseconds per move for the MCTS search. |
+| **`cParam`** | `double` | `1.5` | UCT exploration constant ($c$). |
+| **`kRave`** | `int` | `600` | RAVE weight constant ($K$ in $\beta^*$). |
+| **`rolloutEps`** | `double` | `0.5` | $\epsilon$ for $\epsilon$-greedy rollout policy. |
+| **`seed`** | `long` | `7L` | Random seed for the agent's internal components. |
+
+**Example Constructor:**
+```java
+new MySushiGoAgent(300, 1.5, 600, 0.5, 7L);
